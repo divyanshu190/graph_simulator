@@ -193,8 +193,42 @@ function SingleReactionPage({
       customdata: curve.points.map((point) => [1 - point.x, curve.N === 'PFR' ? '∞' : curve.N]),
     }))
 
+    // Textbook reference contours overlaid on the space-time-ratio plot.
+    // For first order: k·τ_N = (τ_N/τ_P)(-ln x).
+    // For second order: k·C_A0·τ_N = (τ_N/τ_P)(1/x - 1).
+    const contourLevels = reactionOrder === 1 ? [1, 2, 5, 10, 20, 50] : [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
+    const contourTraces = !showDimensionlessTime ? contourLevels.map((level) => {
+      const contourPoints = curves[0].points.map((point) => {
+        const dimensionlessPfrTime = reactionOrder === 1 ? -Math.log(point.x) : (1 / point.x) - 1
+        return { x: point.x, y: level / dimensionlessPfrTime }
+      })
+      const targetX = reactionOrder === 1
+        ? Math.exp(-level / Math.max(1.3, Math.min(12, level / 4.605)))
+        : 1 / (1 + level / Math.max(1.3, Math.min(12, level / 99)))
+      let labelIndex = 0
+      contourPoints.forEach((point, index) => {
+        if (Math.abs(Math.log(point.x) - Math.log(targetX)) < Math.abs(Math.log(contourPoints[labelIndex].x) - Math.log(targetX))) labelIndex = index
+      })
+      const label = reactionOrder === 1 ? `kτ = ${level}` : `kC_A0τ = ${level}`
+      const text = contourPoints.map((_, index) => index === labelIndex ? label : '')
+      return {
+        x: contourPoints.map((point) => point.x),
+        y: contourPoints.map((point) => point.y),
+        type: 'scatter',
+        mode: 'lines+text',
+        name: label,
+        showlegend: false,
+        line: { color: 'rgba(100,116,139,0.8)', width: 1.3, dash: 'dash' },
+        text,
+        textposition: 'top right',
+        textfont: { size: 11, color: '#64748b' },
+        hovertemplate: `${label}<br>x=%{x}<br>τ_N/τ_P=%{y:.3f}<extra></extra>`,
+      }
+    }) : []
+
     return [
       ...allSeries,
+      ...contourTraces,
       {
         x: [x],
         y: [graphY],
@@ -206,7 +240,7 @@ function SingleReactionPage({
         customdata: [settings.conversion],
       },
     ]
-  }, [curves, graphY, settings.N, settings.conversion, x, yAxisTitle])
+  }, [curves, graphY, reactionOrder, settings.N, settings.conversion, showDimensionlessTime, x, yAxisTitle])
 
   const yValues = showDimensionlessTime ? curves.flatMap((curve) => curve.points.map((point) => point.y)) : []
   const dimensionlessYRange = yValues.length
