@@ -5,7 +5,6 @@ import Plot from 'react-plotly.js'
 import { Link, NavLink, Route, Routes } from 'react-router-dom'
 import 'katex/dist/katex.min.css'
 import {
-  DEFAULT_AXIS,
   calculateAbsoluteSpaceTimes,
   calculateFirstOrderDimensionlessSpaceTime,
   calculateFirstOrderRatio,
@@ -160,14 +159,6 @@ function SingleReactionPage({
   const conversion = settings.conversion / 100
   const x = 1 - conversion
   const ratio = getSelectedRatio({ reactionOrder, x, N: settings.N })
-  const currentResults = calculateAbsoluteSpaceTimes({
-    reactionOrder,
-    x,
-    N: settings.N,
-    k: settings.k,
-    CA0: settings.CA0,
-  })
-
   const showDimensionlessTime = graphMetric === 'dimensionless'
   const curves = reactionOrder === 1
     ? showDimensionlessTime ? generateFirstOrderDimensionlessCurves() : generateFirstOrderCurves()
@@ -247,17 +238,12 @@ function SingleReactionPage({
     ? [Math.min(...yValues) * 0.9, Math.max(...yValues) * 1.1]
     : undefined
 
-  const handleResetAxes = () => {
-    setSettings((prev) => ({ ...prev, minX: DEFAULT_AXIS.minX, maxX: DEFAULT_AXIS.maxX, minY: DEFAULT_AXIS.minY, maxY: DEFAULT_AXIS.maxY }))
-  }
-
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-4">
         <MetricCard label="Selected conversion" value={`${settings.conversion.toFixed(0)}%`} detail="XA" />
         <MetricCard label="Unconverted fraction" value={x.toFixed(3)} detail="CA/CA0" />
         <MetricCard label="Reactor performance ratio" value={`${ratio.toFixed(2)}×`} detail="τN/τP" />
-        <MetricCard label="Space-time comparison" value={`${currentResults.tauN.toFixed(2)} / ${currentResults.tauP.toFixed(2)}`} detail="τN and τP" />
       </div>
 
       <div className="grid items-start gap-6 md:grid-cols-[280px_minmax(0,1fr)]">
@@ -277,38 +263,17 @@ function SingleReactionPage({
                 <option value={2}>Elementary second order, n = 2</option>
               </select>
             </label>
-            <SliderControl label="Kinetic constant, k" value={settings.k} min={0.05} max={5} step={0.05} onChange={(value) => setSettings((prev) => ({ ...prev, k: value }))} description="Affects dimensional space times only." />
-            <SliderControl label="Initial concentration, CA0" value={settings.CA0} min={0.1} max={10} step={0.1} onChange={(value) => setSettings((prev) => ({ ...prev, CA0: value }))} description="Applies to absolute τ values." />
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
-              <div className="mb-2 flex items-center justify-between">
-                <h4 className="text-sm font-semibold">Graph Settings</h4>
-                <button type="button" onClick={handleResetAxes} className="text-xs font-medium text-sky-600">Reset Axes</button>
-              </div>
-              <div className="mb-3 grid grid-cols-2 rounded-lg bg-slate-200 p-1 text-xs dark:bg-slate-700" aria-label="Graph quantity">
-                <button type="button" onClick={() => setGraphMetric('ratio')} aria-pressed={!showDimensionlessTime} className={`rounded-md px-2 py-1.5 font-medium ${!showDimensionlessTime ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>Space-time ratio</button>
-                <button type="button" onClick={() => setGraphMetric('dimensionless')} aria-pressed={showDimensionlessTime} className={`rounded-md px-2 py-1.5 font-medium ${showDimensionlessTime ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>Dimensionless time</button>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <input value={settings.minX} onChange={(event) => setSettings((prev) => ({ ...prev, minX: Number(event.target.value) }))} className="rounded border bg-white px-2 py-1 text-sm dark:bg-slate-900" aria-label="Horizontal minimum" />
-                <input value={settings.maxX} onChange={(event) => setSettings((prev) => ({ ...prev, maxX: Number(event.target.value) }))} className="rounded border bg-white px-2 py-1 text-sm dark:bg-slate-900" aria-label="Horizontal maximum" />
-                {showDimensionlessTime ? (
-                  <p className="col-span-2 text-xs text-slate-500 dark:text-slate-400">Vertical bounds fit the dimensionless-time curves automatically.</p>
-                ) : (
-                  <>
-                    <input value={settings.minY} onChange={(event) => setSettings((prev) => ({ ...prev, minY: Number(event.target.value) }))} className="rounded border bg-white px-2 py-1 text-sm dark:bg-slate-900" aria-label="Vertical minimum" />
-                    <input value={settings.maxY} onChange={(event) => setSettings((prev) => ({ ...prev, maxY: Number(event.target.value) }))} className="rounded border bg-white px-2 py-1 text-sm dark:bg-slate-900" aria-label="Vertical maximum" />
-                  </>
-                )}
-              </div>
-              <div className="mt-3 flex gap-3 text-xs">
-                <button type="button" onClick={() => setSettings((prev) => ({ ...prev, axisMode: 'log' }))} className={`rounded-full px-2 py-1 ${settings.axisMode === 'log' ? 'bg-sky-600 text-white' : 'bg-slate-200 dark:bg-slate-700'}`}>Log</button>
-                <button type="button" onClick={() => setSettings((prev) => ({ ...prev, axisMode: 'linear' }))} className={`rounded-full px-2 py-1 ${settings.axisMode === 'linear' ? 'bg-sky-600 text-white' : 'bg-slate-200 dark:bg-slate-700'}`}>Linear</button>
-              </div>
-            </div>
+
           </div>
         </aside>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="mb-3 flex justify-end">
+            <div className="inline-flex rounded-lg bg-slate-200 p-1 text-xs dark:bg-slate-700" aria-label="Graph quantity">
+              <button type="button" onClick={() => setGraphMetric('ratio')} aria-pressed={!showDimensionlessTime} className={`rounded-md px-3 py-1.5 font-medium ${!showDimensionlessTime ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>Space-time ratio</button>
+              <button type="button" onClick={() => setGraphMetric('dimensionless')} aria-pressed={showDimensionlessTime} className={`rounded-md px-3 py-1.5 font-medium ${showDimensionlessTime ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-300'}`}>Dimensionless time</button>
+            </div>
+          </div>
           <Plot
             data={plotData}
             layout={{
